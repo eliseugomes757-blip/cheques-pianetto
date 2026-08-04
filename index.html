@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Cheques</title>
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --card: #ffffff;
+    --border: #e1e4e8;
+    --text: #1f2328;
+    --text-muted: #6b7280;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --danger: #dc2626;
+    --danger-bg: #fee2e2;
+    --success-bg: #dcfce7;
+    --success-text: #166534;
+    --pending-bg: #fef3c7;
+    --pending-text: #92400e;
+    --returned-bg: #fee2e2;
+    --returned-text: #991b1b;
+    --cancelled-bg: #e5e7eb;
+    --cancelled-text: #374151;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px 16px 60px;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 4px; }
+  .subtitle { color: var(--text-muted); font-size: 14px; margin: 0 0 24px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .card h2 { font-size: 15px; font-weight: 600; margin: 0 0 16px; }
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+  }
+  @media (max-width: 640px) {
+    .form-grid { grid-template-columns: 1fr; }
+  }
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+  input[type=text], select {
+    width: 100%;
+    height: 38px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    background: #fff;
+    color: var(--text);
+  }
+  input[type=text]:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+  }
+  button {
+    height: 38px;
+    padding: 0 18px;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover { background: var(--accent-hover); }
+  button.secondary {
+    background: #fff;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  button.secondary:hover { background: #f3f4f6; }
+  .toolbar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .toolbar input, .toolbar select { width: auto; min-width: 160px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th {
+    text-align: left;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: var(--text-muted);
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 10px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .badge-pendente { background: var(--pending-bg); color: var(--pending-text); }
+  .badge-compensado { background: var(--success-bg); color: var(--success-text); }
+  .badge-devolvido { background: var(--returned-bg); color: var(--returned-text); }
+  .badge-cancelado { background: var(--cancelled-bg); color: var(--cancelled-text); }
+  .row-actions { display: flex; gap: 8px; }
+  .icon-btn { height: 30px; padding: 0 10px; font-size: 12px; font-weight: 500; }
+  .icon-btn.delete { color: var(--danger); border-color: var(--danger-bg); }
+  .icon-btn.delete:hover { background: var(--danger-bg); }
+  .empty { text-align: center; color: var(--text-muted); padding: 40px 20px; font-size: 14px; }
+  .status-msg { font-size: 13px; color: var(--text-muted); margin-top: 8px; min-height: 18px; }
+  .count-tag { font-size: 13px; color: var(--text-muted); margin-left: auto; }
+  .conn-dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: #d1d5db; margin-right: 6px;
+  }
+  .conn-dot.on { background: #16a34a; }
+  .conn-status { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Controle de cheques</h1>
+  <p class="subtitle">Cadastre cheques, acompanhe o status e o CTE vinculado. Dados compartilhados em tempo real com quem acessar este link.</p>
+  <div class="conn-status"><span class="conn-dot" id="connDot"></span><span id="connText">Conectando...</span></div>
+
+  <div class="card">
+    <h2>Novo cheque</h2>
+    <div class="form-grid">
+      <div>
+        <label for="numCheque">Número do cheque</label>
+        <input type="text" id="numCheque" placeholder="Ex: 000123">
+      </div>
+      <div>
+        <label for="status">Status</label>
+        <select id="status">
+          <option value="Pendente">Pendente</option>
+          <option value="Compensado">Compensado</option>
+          <option value="Devolvido">Devolvido</option>
+          <option value="Cancelado">Cancelado</option>
+        </select>
+      </div>
+      <div>
+        <label for="numCte">Número do CTE vinculado</label>
+        <input type="text" id="numCte" placeholder="Ex: CTE-4567">
+      </div>
+      <div>
+        <button id="btnSalvar" onclick="salvarCheque()">Adicionar</button>
+      </div>
+    </div>
+    <div class="status-msg" id="msg"></div>
+  </div>
+
+  <div class="card">
+    <div class="toolbar">
+      <input type="text" id="busca" placeholder="Buscar por cheque ou CTE..." oninput="renderizar()">
+      <select id="filtroStatus" onchange="renderizar()">
+        <option value="">Todos os status</option>
+        <option value="Pendente">Pendente</option>
+        <option value="Compensado">Compensado</option>
+        <option value="Devolvido">Devolvido</option>
+        <option value="Cancelado">Cancelado</option>
+      </select>
+      <span class="count-tag" id="contagem"></span>
+    </div>
+    <div id="tabelaContainer"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-database-compat.min.js"></script>
+<script>
+// ============================================================
+// PASSO OBRIGATORIO: cole aqui as chaves do SEU projeto Firebase
+// (siga o passo a passo que o Claude te enviou no chat)
+// ============================================================
+const firebaseConfig = {
+  apiKey: "COLE_AQUI",
+  authDomain: "COLE_AQUI",
+  databaseURL: "COLE_AQUI",
+  projectId: "COLE_AQUI",
+  storageBucket: "COLE_AQUI",
+  messagingSenderId: "COLE_AQUI",
+  appId: "COLE_AQUI"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const chequesRef = db.ref('cheques');
+
+let cheques = {};
+
+chequesRef.on('value', snapshot => {
+  cheques = snapshot.val() || {};
+  document.getElementById('connDot').classList.add('on');
+  document.getElementById('connText').textContent = 'Conectado — dados em tempo real';
+  renderizar();
+});
+
+db.ref('.info/connected').on('value', snap => {
+  if (snap.val() === false) {
+    document.getElementById('connDot').classList.remove('on');
+    document.getElementById('connText').textContent = 'Sem conexão';
+  }
+});
+
+function badgeClass(status) {
+  const map = {
+    'Pendente': 'badge-pendente',
+    'Compensado': 'badge-compensado',
+    'Devolvido': 'badge-devolvido',
+    'Cancelado': 'badge-cancelado'
+  };
+  return map[status] || 'badge-pendente';
+}
+
+function mostrarMsg(texto) {
+  const el = document.getElementById('msg');
+  el.textContent = texto;
+  setTimeout(() => { if (el.textContent === texto) el.textContent = ''; }, 2500);
+}
+
+function salvarCheque() {
+  const numCheque = document.getElementById('numCheque').value.trim();
+  const status = document.getElementById('status').value;
+  const numCte = document.getElementById('numCte').value.trim();
+
+  if (!numCheque) {
+    mostrarMsg('Informe o número do cheque.');
+    return;
+  }
+
+  const novoId = chequesRef.push().key;
+  chequesRef.child(novoId).set({
+    numCheque,
+    status,
+    numCte: numCte || '-',
+    criadoEm: Date.now()
+  });
+
+  document.getElementById('numCheque').value = '';
+  document.getElementById('numCte').value = '';
+  document.getElementById('numCheque').focus();
+  mostrarMsg('Cheque adicionado.');
+}
+
+function excluirCheque(id) {
+  chequesRef.child(id).remove();
+}
+
+function alterarStatus(id, novoStatus) {
+  chequesRef.child(id).update({ status: novoStatus });
+}
+
+function renderizar() {
+  const busca = document.getElementById('busca').value.trim().toLowerCase();
+  const filtroStatus = document.getElementById('filtroStatus').value;
+  const container = document.getElementById('tabelaContainer');
+
+  let lista = Object.keys(cheques).map(id => ({ id, ...cheques[id] }));
+  lista.sort((a, b) => (b.criadoEm || 0) - (a.criadoEm || 0));
+
+  let filtrados = lista.filter(c => {
+    const passaBusca = !busca || (c.numCheque||'').toLowerCase().includes(busca) || (c.numCte||'').toLowerCase().includes(busca);
+    const passaStatus = !filtroStatus || c.status === filtroStatus;
+    return passaBusca && passaStatus;
+  });
+
+  document.getElementById('contagem').textContent = filtrados.length + ' cheque(s)';
+
+  if (filtrados.length === 0) {
+    container.innerHTML = '<div class="empty">Nenhum cheque cadastrado ainda.</div>';
+    return;
+  }
+
+  let html = '<table><thead><tr><th>Nº do cheque</th><th>Status</th><th>Nº do CTE</th><th></th></tr></thead><tbody>';
+  for (const c of filtrados) {
+    html += `<tr>
+      <td>${escapeHtml(c.numCheque)}</td>
+      <td>
+        <select onchange="alterarStatus('${c.id}', this.value)" style="height:30px; font-size:12px; padding:0 6px; width:auto;">
+          <option value="Pendente" ${c.status==='Pendente'?'selected':''}>Pendente</option>
+          <option value="Compensado" ${c.status==='Compensado'?'selected':''}>Compensado</option>
+          <option value="Devolvido" ${c.status==='Devolvido'?'selected':''}>Devolvido</option>
+          <option value="Cancelado" ${c.status==='Cancelado'?'selected':''}>Cancelado</option>
+        </select>
+      </td>
+      <td>${escapeHtml(c.numCte)}</td>
+      <td class="row-actions">
+        <button class="secondary icon-btn delete" onclick="excluirCheque('${c.id}')">Excluir</button>
+      </td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+
+document.getElementById('numCheque').addEventListener('keydown', e => { if (e.key === 'Enter') salvarCheque(); });
+document.getElementById('numCte').addEventListener('keydown', e => { if (e.key === 'Enter') salvarCheque(); });
+</script>
+</body>
+</html>
